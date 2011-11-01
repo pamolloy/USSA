@@ -23,8 +23,8 @@ class GetSchedule:
      applicable data in external JSON data structure."""
     
     def __init__(self):
-        # Select which websites to crawl
-    
+        pass # Select which websites to crawl
+        
     def load_page(self, url):
         """For each URL in the given list: download the page, read it"""
         
@@ -40,7 +40,8 @@ class MLSSoccer:
     def crawl(self):
         mls_list = []
         url = "http://www.mlssoccer.com/schedule?month=all&year=2011"
-        soup = GetSchedule.load_page(url)
+        schedule = GetSchedule()
+        soup = schedule.load_page(url)
         print 'Locating scheduling section'
         section = soup.find("div", {"class": "schedule-page"})
         
@@ -48,14 +49,16 @@ class MLSSoccer:
             match = {}
             
             # NOT easily processed information
-            match['date'] = date(table)
-            details(table) # TODO(pamolloy): Clarify output
-            score(table) # TODO(pamolloy): Clarify output
+            match['date'] = self.date(table)
+            details = self.details(table) # TODO(pamolloy): Clarify output
+            match = dict(match.items() + details.items())
+            goals = self.score(table) # TODO(pamolloy): Clarify output
+            match = dict(match.items() + goals.items())
             
             # Easily processed information
-            match['venue'] = generic(table, "views-field venue")
-            match['team1'] = generic(table, "views-field home-team")
-            match['team2'] = generic(table, "views-field away-team")
+            match['venue'] = self.generic(table, "views-field venue")
+            match['team1'] = self.generic(table, "views-field home-team")
+            match['team2'] = self.generic(table, "views-field away-team")
             
             # Add match dictionary to schedule list
             mls_list.append(match)
@@ -74,11 +77,12 @@ class MLSSoccer:
     def details(self, table):
         """Process the venue and channels from the details section"""
         
-        # If the game has passed, ignore "Final"
+        match = {}
         html = table.find("td", {"class": "views-field start-time"})
         details = html.contents
+        # If the game has passed, ignore "Final"
         if details[0] == u'Final':
-            pass
+           return match 
         else:
             match['hour'] = details[0]
             count = 0
@@ -87,14 +91,17 @@ class MLSSoccer:
                 station = BeautifulSoup('{}'.format(station))
                 match['tv{}'.format(count)] = station.strong.contents[0]
                 count += 1
-                
+            
+            return match
+            
     def score(self, table):
         """Process the score into number of (penalty) goals for each team"""
         
+        match = {}
         score = table.find("td", {"class": "views-field score"}).contents
         # Ignore score for upcoming games, which return empty list
         if score == []:
-            pass
+           return match 
         else:
             score = score[0] # Select first string from list
             # Store penalties
@@ -107,6 +114,8 @@ class MLSSoccer:
                 match['goals1'] = int(score[0])
                 match['goals2'] = int(score[4])
             else: pass
+            
+            return match
         
     def generic(self, table, attribute):
         """Find and return the match venue."""
