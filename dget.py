@@ -9,7 +9,6 @@
 #
 #   TODO:
 #   - Split into multiple files by class
-#   - Apply processing in MLSSoccer recursively inside tables
 #   - Check national team player pool and check upcoming games for applicable
 #     players
 
@@ -46,23 +45,27 @@ class MLSSoccer:
         section = soup.find("div", {"class": "schedule-page"})
         
         for table in section.findAll("table"):
-            match = {}
+            table_body = table.find('tbody')
+            table_rows = table_body.findAll('tr')
             
-            # NOT easily processed information
-            match['date'] = self.date(table)
-            details = self.details(table) # TODO(pamolloy): Clarify output
-            match = dict(match.items() + details.items())
-            goals = self.score(table) # TODO(pamolloy): Clarify output
-            match = dict(match.items() + goals.items())
-            
-            # Easily processed information
-            match['venue'] = self.generic(table, "views-field venue")
-            match['team1'] = self.generic(table, "views-field home-team")
-            match['team2'] = self.generic(table, "views-field away-team")
-            
-            # Add match dictionary to schedule list
-            mls_list.append(match)
-            
+            for row in table_rows:
+                match = {}
+                
+                # NOT easily processed information
+                match['date'] = self.date(table)
+                details = self.details(table) # TODO(pamolloy): Clarify output
+                match = dict(match.items() + details.items())
+                goals = self.score(table) # TODO(pamolloy): Clarify output
+                match = dict(match.items() + goals.items())
+                
+                # Easily processed information
+                match['venue'] = self.generic(table, "views-field venue")
+                match['team1'] = self.generic(table, "views-field home-team")
+                match['team2'] = self.generic(table, "views-field away-team")
+                
+                # Add match dictionary to schedule list
+                mls_list.append(match)
+                
         return mls_list
         
     def date(self, table):
