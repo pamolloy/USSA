@@ -1,6 +1,6 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
-
+#
 #   dget.py
 #
 #   PURPOSE:
@@ -17,7 +17,7 @@ import re
 import json
 from BeautifulSoup import BeautifulSoup
 
-class GetSchedule:
+class GetSchedule: # TODO(pamolloy): Add object
     """Download pages with United States soccer schedules and results. Store
      applicable data in external JSON data structure."""
     
@@ -33,11 +33,14 @@ class GetSchedule:
         
         return soup
         
-class MLSSoccer:
+class MLSSoccer: # TODO(pamolloy): Add object
     """Download schedule from official MLS website and process information."""
     
     def crawl(self):
+        """Crawl the page with BeautifulSoup for applicable information."""
+        
         mls_list = []
+        
         url = "http://www.mlssoccer.com/schedule?month=all&year=2011"
         schedule = GetSchedule()
         soup = schedule.load_page(url)
@@ -53,10 +56,10 @@ class MLSSoccer:
                 
                 # NOT easily processed information
                 match['date'] = self.date(table)
-                details = self.details(table) # TODO(pamolloy): Clarify output
-                match = dict(match.items() + details.items())
-                goals = self.score(table) # TODO(pamolloy): Clarify output
-                match = dict(match.items() + goals.items())
+                details = self.details(table)
+                match = dict(match.update(details))
+                goals = self.score(table)
+                match = dict(match.update(goals))
                 
                 # Easily processed information
                 match['venue'] = self.generic(table, "views-field venue")
@@ -72,7 +75,7 @@ class MLSSoccer:
         """Find the date of each match based on the last <h3> tag"""
         
         date = table.findPreviousSibling("h3") # Find last preceding <h3> tags
-        date = BeautifulSoup('{}'.format(date))
+        date = BeautifulSoup(unicode(date))
         date = date.h3.contents[0] # Remove <h3> tags
         
         return date
