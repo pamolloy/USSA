@@ -15,7 +15,7 @@
 import sys
 import re
 import json
-from BeautifulSoup import BeautifulSoup
+from BeautifulSoup import BeautifulSoup, NavigableString
 from dget import GetSchedule
 
 class WomensProSoccer(object):
@@ -33,7 +33,6 @@ class WomensProSoccer(object):
         soup = BeautifulSoup(html)
         for tag in soup.findAll(True):
             if tag.find('a'):
-                print tag.contents
                 if len(tag.contents[0]) > len(tag.contents[1]):
                     content = tag.contents[0]
                     content = [content]
@@ -75,7 +74,7 @@ class WomensProSoccer(object):
                 match['team1'] = self.clean(info_list[0])
                 match['team2'] = self.clean(info_list[1])
                 match['venue'] = self.clean(info_list[2])
-                match['score'] = self.score(info_list[3])
+                match.update(self.score(info_list[3]))
                 # Fourth element is a link to match report
                 match['attendance'] = self.clean(info_list[5])
                 print match
@@ -85,24 +84,43 @@ class WomensProSoccer(object):
                 
         return schedule
     
+    def cleaner(self, html, repeat):
+        """Recursively remove tags for a certain count."""
+        
+        count = 0
+        html = unicode(html)
+        html = BeautifulSoup(html)
+        
+        for tag in html.findAll(True):
+            
+            if count == repeat:
+                break
+            else:
+                content = tag.contents
+                count += 1
+        
+        return content
+    
     def date(self, row):
         """Find the date in a table row. If playoff match create element."""
         
         count = 0
         row = unicode(row)
         soup = BeautifulSoup(row)
-        print soup.findAll(True)
         
         for tag in soup.findAll(True):
             # WPS playoff games include title in date row
             if tag.find('br'):
-                html = re.split('<br />', unicode(tag))
-                content = html[1]
+                tags = self.cleaner(tag, 2)
+                # Remove tags from list
+                tags = [element for element in tags if isinstance(element, NavigableString)]
+                print tags
+                date = tags[-1]
                 break # Later elements in list do not contain date
             else:
-                content = tag.contents[0]
+                date = tag.contents[0]
 
-        return content
+        return date
         
     def score(self, section):
         """Process the score into number of (penalty) goals for each team"""
@@ -112,12 +130,13 @@ class WomensProSoccer(object):
         section = section.contents
         if section[0] == 'Postponed':
             pass
-        elif section[0] == '\n':
-            section = BeautifulSoup(section).contents[1]
-            match['goals1'] = int(section[0])
-            match['goals2'] = int(section[8])
-            match['pens1'] = int(section[3])
-            match['pens22'] = int(section[11])
+        elif section[0] == '\n': # Penalty goals
+            section = section[1]
+            goals = re.findall('\d', unicode(section))
+            match['goals1'] = int(goals[0])
+            match['goals2'] = int(goals[1])
+            match['pens1'] = int(goals[2])
+            match['pens2'] = int(goals[3])
         else:
             section = section[0]
             match['goals1'] = int(section[0])
