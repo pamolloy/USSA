@@ -8,6 +8,8 @@
 #   Store applicable data in data structure.
 #
 #   TODO:
+#   - Divide the score into goals per team
+#   - Include playoff games
 #
 
 import sys
@@ -27,11 +29,11 @@ class WomensProSoccer(object):
     def clean(self, html):
         """Remove all the html tags from a string."""
         
-        count = 0
         html = unicode(html)
         soup = BeautifulSoup(html)
         for tag in soup.findAll(True):
             if tag.find('a'):
+                print tag.contents
                 if len(tag.contents[0]) > len(tag.contents[1]):
                     content = tag.contents[0]
                     content = [content]
@@ -57,21 +59,23 @@ class WomensProSoccer(object):
         #section = soup.find("div", {"class": self.attribute})
         row_list = soup.find("tbody").findAll('tr')
         del row_list[0] # Remove table header
-        del row_list[-6:] # Temporarily remove poorly formated final matches
+        #del row_list[-6:] # Temporarily remove poorly formated final matches
         
         for row in row_list:
             info_list = row.findAll("div", {"align": "center"})
             
+            # If the row contains one column it contains the date. This is
+            #quicker than searching for <th> with BeatifulSoup
             if len(info_list) == 1:
-                date = self.clean(info_list[0])
+                date = self.date(info_list[0])
             else:
                 match = {} # Dictionary to hold match information
                 
-                match['date'] = date
+                match['date'] = date # Assign the date of the last header row
                 match['team1'] = self.clean(info_list[0])
                 match['team2'] = self.clean(info_list[1])
                 match['venue'] = self.clean(info_list[2])
-                match['score'] = self.clean(info_list[3])
+                match['score'] = self.score(info_list[3])
                 # Fourth element is a link to match report
                 match['attendance'] = self.clean(info_list[5])
                 print match
@@ -80,6 +84,25 @@ class WomensProSoccer(object):
                 schedule.append(match)
                 
         return schedule
+    
+    def date(self, row):
+        """Find the date in a table row. If playoff match create element."""
+        
+        count = 0
+        row = unicode(row)
+        soup = BeautifulSoup(row)
+        print soup.findAll(True)
+        
+        for tag in soup.findAll(True):
+            # WPS playoff games include title in date row
+            if tag.find('br'):
+                html = re.split('<br />', unicode(tag))
+                content = html[1]
+                break # Later elements in list do not contain date
+            else:
+                content = tag.contents[0]
+
+        return content
         
     def score(self, section):
         """Process the score into number of (penalty) goals for each team"""
@@ -90,10 +113,7 @@ class WomensProSoccer(object):
         if section[0] == 'Postponed':
             pass
         elif section[0] == '\n':
-            #section = [item for item in section if item != '']
-            print section
             section = BeautifulSoup(section).contents[1]
-            print section
             match['goals1'] = int(section[0])
             match['goals2'] = int(section[8])
             match['pens1'] = int(section[3])
