@@ -13,7 +13,7 @@
 import re
 import json
 from BeautifulSoup import BeautifulSoup, NavigableString
-from dget import GetSchedule
+from ussa import GetSchedule
 
 class WomensProSoccer(object):
     """Download schedule from official WPS website and process information."""
