@@ -8,11 +8,8 @@
 #   Store applicable data in data structure.
 #
 #   TODO:
-#   - Divide the score into goals per team
-#   - Include playoff games
 #
 
-import sys
 import re
 import json
 from BeautifulSoup import BeautifulSoup, NavigableString
@@ -24,29 +21,6 @@ class WomensProSoccer(object):
     def __init__(self):
         self.schedule = GetSchedule()
         self.url = "http://www.womensprosoccer.com/Home/schedule/2011-wps-schedule"
-        #self.attribute = "modContent"
-    
-    def clean(self, html):
-        """Remove all the html tags from a string."""
-        
-        html = unicode(html)
-        soup = BeautifulSoup(html)
-        for tag in soup.findAll(True):
-            if tag.find('a'):
-                if len(tag.contents[0]) > len(tag.contents[1]):
-                    content = tag.contents[0]
-                    content = [content]
-                else:
-                    content = tag.contents[1]
-                    content = [content]
-            elif len(soup.findAll(True)) == 2 and tag.contents == []:
-                pass
-            elif tag.contents == []:
-                content = ['None']
-            else:
-                content = tag.contents
-        
-        return content[0]
         
     def crawl(self):
         """Crawl the page with BeautifulSoup for applicable information."""
@@ -55,28 +29,28 @@ class WomensProSoccer(object):
         
         soup = self.schedule.load_page(self.url)
         print 'Locating scheduling section'
-        #section = soup.find("div", {"class": self.attribute})
-        row_list = soup.find("tbody").findAll('tr')
-        del row_list[0] # Remove table header
-        #del row_list[-6:] # Temporarily remove poorly formated final matches
+        tbody = soup.find("tbody").findAll('tr')
+        del tbody[0] # Remove table header
         
-        for row in row_list:
-            info_list = row.findAll("div", {"align": "center"})
+        for row in tbody:
+            stat = row.findAll("div", {"align": "center"})
+            stat = [self.cleaner(info, 1) for info in stat] # Remove <div>
             
-            # If the row contains one column it contains the date. This is
+            # If the row consists of one column it contains the date. This is
             #quicker than searching for <th> with BeatifulSoup
-            if len(info_list) == 1:
-                date = self.date(info_list[0])
+            if len(stat) == 1:
+                date = self.date(stat[0])
             else:
                 match = {} # Dictionary to hold match information
                 
                 match['date'] = date # Assign the date of the last header row
-                match['team1'] = self.clean(info_list[0])
-                match['team2'] = self.clean(info_list[1])
-                match['venue'] = self.clean(info_list[2])
-                match.update(self.score(info_list[3]))
+                match['team1'] = stat[0][0]
+                match['team2'] = stat[1][0]
+                match['venue'] = stat[2][0]
+                match.update(self.score(stat[3]))
                 # Fourth element is a link to match report
-                match['attendance'] = self.clean(info_list[5])
+                print stat[5]
+                match['attendance'] = self.attendance(stat[5])
                 print match
                 
                 # Add match dictionary to schedule list
@@ -85,41 +59,33 @@ class WomensProSoccer(object):
         return schedule
     
     def cleaner(self, html, repeat):
-        """Recursively remove tags for a certain count."""
+        """Recursively remove tags for a certain count, returning a list."""
         
         count = 0
         html = unicode(html)
-        html = BeautifulSoup(html)
+        soup = BeautifulSoup(html)
         
-        for tag in html.findAll(True):
+        for element in soup.findAll(True):
             
             if count == repeat:
                 break
             else:
-                content = tag.contents
+                content = element.contents
                 count += 1
-        
+                
         return content
     
-    def date(self, row):
+    def date(self, html):
         """Find the date in a table row. If playoff match create element."""
         
-        count = 0
-        row = unicode(row)
-        soup = BeautifulSoup(row)
+        row = self.cleaner(html, 1) # Remove <strong>
         
-        for tag in soup.findAll(True):
-            # WPS playoff games include title in date row
-            if tag.find('br'):
-                tags = self.cleaner(tag, 2)
-                # Remove tags from list
-                tags = [element for element in tags if isinstance(element, NavigableString)]
-                print tags
-                date = tags[-1]
-                break # Later elements in list do not contain date
-            else:
-                date = tag.contents[0]
-
+        if len(row) == 1:
+            date = row[0]
+        else: # Process ugly formatting of playoff games
+            row = [element for element in row if isinstance(element, NavigableString)]
+            date = row[-1] #TODO(pamolloy): Store game title
+            
         return date
         
     def score(self, section):
@@ -127,7 +93,6 @@ class WomensProSoccer(object):
         
         match = {}
         
-        section = section.contents
         if section[0] == 'Postponed':
             pass
         elif section[0] == '\n': # Penalty goals
@@ -143,9 +108,25 @@ class WomensProSoccer(object):
             match['goals2'] = int(section[4])
         
         return match
+       
+    def attendance(self, html):
+        """Find the attendance within list"""
+        print html
+        if len(html) == 1:
+            attendance = html[0]
+        elif len(html) == 2:
+            print html
+            attendance = [element for element in html if isinstance(element, NavigableString)]
+            print attendance
+            attendance = attendance[0]
+        elif len(html) == 0: # Postponed game
+            attendance = int() 
         
+        return attendance
+
 page = WomensProSoccer()
 schedule = page.crawl()
 
+print 'Storing schedule to: wps.json'
 with open('wps.json', 'w') as store:
     json.dump(schedule, store)
