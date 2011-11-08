@@ -1,6 +1,9 @@
 # USSA #
 United States Soccer Archiver (USSA) aims to compile information about past and upcoming professional soccer games in the United States and involving American players abroad.
 
+## TODO ##
+* Check national team player pool and check upcoming games for applicable players
+
 ## Schedules ##
 The following pages represent the scope of this project.
 
