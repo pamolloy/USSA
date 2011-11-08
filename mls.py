@@ -29,11 +29,12 @@ class MLSSoccer(object):
         schedule = []
         
         soup = self.schedule.load_page(self.url)
-        print 'Locating scheduling section'
+        print 'Locating scheduling section: {}'.format(att)
         section = soup.find("div", {"class": self.att})
         
         for table in section.findAll("table"):
             table_body = table.find('tbody')
+            date = self.date(table)
             table_rows = table_body.findAll('tr')
             
             for row in table_rows:
@@ -41,11 +42,11 @@ class MLSSoccer(object):
                 match = {}
                 
                 # NOT easily processed information
-                #match['date'] = self.date(row)
-                #details = self.details(row)
-                #match = match.update(details)
-                #goals = self.score(row)
-                #match = match.update(goals)
+                match['date'] = date
+                details = self.details(row)
+                match.update(details)
+                goals = self.score(row)
+                match.update(goals)
                 
                 # Easily processed information
                 match['venue'] = self.generic(row, "views-field venue")
@@ -70,11 +71,13 @@ class MLSSoccer(object):
         """Process the venue and channels from the details section"""
         
         match = {}
+        
         html = section.find("td", {"class": "views-field start-time"})
         details = html.contents
+        
         # If the game has passed, ignore "Final"
         if details[0] == u'Final':
-           return match 
+            return match
         else:
             match['hour'] = details[0]
             count = 0
